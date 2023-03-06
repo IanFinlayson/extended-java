@@ -1,7 +1,8 @@
-package mine;
+package com.company.mine;
 
-import Scanner;
-import ArrayList;
+import java.util.Scanner;
+import java.util.ArrayList;
+import java.io.File;
 
 done
 

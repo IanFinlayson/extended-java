@@ -44,6 +44,9 @@ public class Node {
         }
 
         switch(type) {
+            case QualifiedName:
+                System.out.printf("Qualified Name: %s\n", id);
+                break;
             case Identifier:
                 System.out.printf("Id: %s\n", id);
                 break;

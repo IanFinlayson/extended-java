@@ -59,7 +59,7 @@ Node Program(): {
     types = TypeDeclarations()
     <EOF>
     {
-        Node wholeFile = new Node(NodeType.File);
+        Node wholeFile = new Node(NodeType.Program);
         wholeFile.attach(pkg);
         wholeFile.attach(imports);
         wholeFile.attach(types);
@@ -105,23 +105,37 @@ Node ImportLines(): {
 }
 
 Node QualifiedName(): {
-    Token part;
+    Token first;
     Node rest;
 }
 {
-    part = <ID>
-    <DOT>
-    rest = QualifiedName()
+    first = <ID>
+    rest = QualifiedNameRest()
     {
-        Node tree = new Node(NodeType.QualifiedName, 0.0, part.image);
+        Node tree = new Node(NodeType.QualifiedName, 0.0, first.image);
         tree.attach(rest);
-    }
-|
-    part = <ID>
-    {
-        return new Node(NodeType.QualifiedName, 0.0, part.image);
+        return tree;
     }
 }
+
+Node QualifiedNameRest(): {
+    Token next;
+    Node rest;
+}
+{
+    <DOT>
+    next = <ID>
+    rest = QualifiedNameRest()
+    {
+        Node tree = new Node(NodeType.QualifiedName, 0.0, next.image);
+        tree.attach(rest);
+        return tree;
+    }
+|
+    {return null;}
+
+}
+
 
 Node TypeDeclarations(): {
     Token done;

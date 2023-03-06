@@ -1,5 +1,5 @@
 public enum NodeType {
-    File,
+    Program,
     Package,
     Identifier,
     QualifiedName,
