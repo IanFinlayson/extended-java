@@ -1,0 +1,8 @@
+rm -f *.class
+rm -f ParseException.java
+rm -f Parser.java
+rm -f ParserConstants.java
+rm -f ParserTokenManager.java
+rm -f SimpleCharStream.java
+rm -f Token.java
+rm -f TokenMgrError.java

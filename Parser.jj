@@ -1,0 +1,416 @@
+/* 
+ * Parser.jj defines a Java parser
+ */
+
+PARSER_BEGIN(Parser)
+    public class Parser {
+    }
+PARSER_END(Parser)
+
+SKIP : { " " | "\t" }
+SKIP : { "\n" | "\r" | "\r\n" }
+SKIP : { < "//" (~["\r", "\n"])* > }
+
+TOKEN : { < PLUS : "+" > }
+TOKEN : { < MINUS : "-" > }
+TOKEN : { < DIVIDE : "/" > }
+TOKEN : { < TIMES : "*" > }
+TOKEN : { < LESS : "<" > }
+TOKEN : { < GREATER : ">" > }
+TOKEN : { < LESSEQ : "<=" > }
+TOKEN : { < GREATEREQ : ">=" > }
+TOKEN : { < EQUALS : "==" > }
+TOKEN : { < NOTEQUALS : "!=" > }
+TOKEN : { < AND : "&&" > }
+TOKEN : { < OR : "||" > }
+TOKEN : { < NOT : "!" > }
+TOKEN : { < SEMI : ";" > }
+TOKEN : { < DOT : "." > } 
+TOKEN : { < ASSIGN : "=" > }
+TOKEN : { < LPAREN : "(" > }
+TOKEN : { < RPAREN : ")" > }
+TOKEN : { < BEGIN : "{" > }
+TOKEN : { < END : "}" > }
+
+TOKEN : { < IMPORT : "import" > }
+TOKEN : { < PACKAGE : "package" > }
+TOKEN : { < IF : "if" > }
+TOKEN : { < ELSE : "else" > }
+TOKEN : { < WHILE : "while" > }
+TOKEN : { < DO : "do" > }
+TOKEN : { < FOR : "for" > }
+
+TOKEN :
+    {
+      < #LETTER: ["a"-"z","A"-"Z"] >
+    | < #DIGIT: ["0"-"9"]>
+    | < ID: ("_" | <LETTER>) (<LETTER> | <DIGIT> | "_")* >
+    | < INT: "0" | ("-")? ["1"-"9"] (<DIGIT>)* >
+    | < FLOAT: <INT> "." (<DIGIT>)* | "." (<DIGIT>)+ >
+    }
+
+
+Node Program(): {
+    Node pkg, imports, types;
+}
+{
+    pkg = PackageLine()
+    imports = ImportLines()
+    types = TypeDeclarations()
+    <EOF>
+    {
+        Node wholeFile = new Node(NodeType.File);
+        wholeFile.attach(pkg);
+        wholeFile.attach(imports);
+        wholeFile.attach(types);
+        return wholeFile;
+    }
+}
+
+Node PackageLine(): {
+    Node name;
+}
+{
+    <PACKAGE>
+    name = QualifiedName()
+    <SEMI>
+    {
+        Node tree = new Node(NodeType.Package);
+        tree.attach(name);
+        return tree;
+    }
+|
+    {return null;} 
+}
+
+Node ImportLines(): {
+    Node name;
+    Node rest;
+}
+{
+    <IMPORT>
+    name = QualifiedName()
+    <SEMI>
+    rest = ImportLines()
+    {
+        Node thisOne = new Node(NodeType.Import);
+        thisOne.attach(name);
+        if (rest != null) {
+            thisOne.attach(rest);
+        }
+        return thisOne;
+    }
+|
+    {return null;}
+}
+
+Node QualifiedName(): {
+    Token part;
+    Node rest;
+}
+{
+    part = <ID>
+    <DOT>
+    rest = QualifiedName()
+    {
+        Node tree = new Node(NodeType.QualifiedName, 0.0, part.image);
+        tree.attach(rest);
+    }
+|
+    part = <ID>
+    {
+        return new Node(NodeType.QualifiedName, 0.0, part.image);
+    }
+}
+
+Node TypeDeclarations(): {
+    Token done;
+}
+{
+    done = <ID>
+    {
+        return new Node(NodeType.Identifier, 0.0, done.image);
+    }
+}
+
+/*
+Node Statements(): {
+    Node stmt, stmts;
+}
+{
+    stmt = Statement()
+    stmts = Statements()
+    {
+        Node tree = new Node(NodeType.STATEMENT);
+        tree.attach(stmt);
+        tree.attach(stmts);
+        return tree;
+    }
+|
+    {return null;}
+
+}
+
+Node Statement(): {
+    Node stmt;
+}
+{
+    stmt = Assign() {return stmt;}
+    | stmt = Print() {return stmt;}
+    | stmt = While() {return stmt;}
+    | stmt = If() {return stmt;}
+    | stmt = BeginEnd() {return stmt;}
+}
+
+Node Assign(): {
+    Token id;
+    Node expr;
+}
+{
+    id = <ID> <ASSIGN> expr = Expression() <SEMI>
+    {
+        Node tree = new Node(NodeType.ASSIGN);
+        tree.attach(new Node(NodeType.IDENTIFIER, 0, id.image));
+        tree.attach(expr); 
+        return tree;
+    }
+}
+
+Node Print(): {
+    Node expr;
+}
+{
+    <PRINT> expr = Expression() <SEMI>
+    {
+        Node tree = new Node(NodeType.PRINT);
+        tree.attach(expr);
+        return tree;
+    }
+}
+
+Node While(): {
+    Node expr, stmt;
+}
+{
+    <WHILE> expr = Expression() <DO> stmt = Statement()
+    {
+        Node tree = new Node(NodeType.WHILE);
+        tree.attach(expr);
+        tree.attach(stmt);
+        return tree;
+    }
+}
+
+Node If(): {
+    Node expr, stmt, extra;
+}
+{
+    <IF> expr = Expression() <THEN> stmt = Statement() extra = ElseOption()
+    {
+        Node tree = new Node(NodeType.IF);
+        tree.attach(expr);
+        tree.attach(stmt);
+        
+        if (extra != null) {
+            tree.attach(extra);
+        }
+        
+        return tree;
+    }
+}
+
+Node ElseOption(): {
+    Node stmt;
+}
+{
+    <ELSE> stmt = Statement()
+    {
+        return stmt;
+    }
+    | {return null;}
+}
+
+Node BeginEnd(): {
+    Node stmts;
+}
+{
+    <BEGIN> stmts = Statements() <END>
+    {
+        return stmts;
+    }
+}
+
+
+// begin the expression tree stuff
+Node Expression(): {
+    Node first, operand;
+}
+{
+    first = Orterm()
+        (
+            <OR>
+            operand = Orterm()
+            {
+                Node tree = new Node(NodeType.OR);
+                tree.attach(first);
+                tree.attach(operand);
+                first = tree;
+            }
+        )*
+        {
+            return first;
+        }
+}
+
+Node Orterm(): {
+    Node first, operand;
+}
+{
+    first = Andterm()
+        (
+            <AND>
+            operand = Andterm()
+            {
+                Node tree = new Node(NodeType.AND);
+                tree.attach(first);
+                tree.attach(operand);
+                first = tree;
+            }
+        )*
+        {
+            return first;
+        }
+}
+
+Node Andterm(): {
+    Node first, operand;
+    NodeType op;
+}
+{
+    first = Relterm()
+        (
+            op = Relop()
+            operand = Relterm()
+            {
+                Node tree = new Node(op);
+                tree.attach(first);
+                tree.attach(operand);
+                first = tree;
+            }
+        )*
+        {
+            return first;
+        }
+}
+
+NodeType Relop(): {
+}
+{
+    <LESS> {return NodeType.LESS;}
+    | <GREATER> {return NodeType.GREATER;}
+    | <LESSEQ> {return NodeType.LESSEQ;}
+    | <GREATEREQ> {return NodeType.GREATEREQ;}
+    | <EQUALS> {return NodeType.EQUALS;}
+    | <NOTEQUALS> {return NodeType.NOTEQUALS;}
+}
+
+Node Relterm(): {
+    Node first, operand;
+    NodeType op;
+}
+{
+    first = Addterm()
+        (
+            op = Addop()
+            operand = Addterm()
+            {
+                Node tree = new Node(op);
+                tree.attach(first);
+                tree.attach(operand);
+                first = tree;
+            }
+        )*
+        {
+            return first;
+        }
+}
+
+NodeType Addop(): {
+}
+{
+    <PLUS> {return NodeType.PLUS;}
+    | <MINUS> {return NodeType.MINUS;}
+}
+
+Node Addterm(): {
+    Node first, operand;
+    NodeType op;
+}
+{
+    first = Multerm()
+        (
+            op = Mulop()
+            operand = Multerm()
+            {
+                Node tree = new Node(op);
+                tree.attach(first);
+                tree.attach(operand);
+                first = tree;
+            }
+        )*
+        {
+            return first;
+        }
+}
+
+NodeType Mulop(): {
+}
+{
+    <TIMES> {return NodeType.TIMES;}
+    | <DIVIDE> {return NodeType.DIVIDE;}
+}
+
+Node Multerm(): {
+    Node term;
+}
+{
+    <NOT> term = Multerm()
+    {
+        Node tree = new Node(NodeType.NOT);
+        tree.attach(term);
+        return tree;
+    }
+    | term = Term() {
+        return term;
+    }
+}
+
+
+Node Term(): {
+    Token tok;
+    Node node;
+}
+{
+    tok = <INT>
+    {
+        return new Node(NodeType.VALUE, Double.parseDouble(tok.image), "");
+    }
+    | tok = <FLOAT>
+    {
+        return new Node(NodeType.VALUE, Double.parseDouble(tok.image), "");
+    }
+    | tok = <ID>
+    {
+        return new Node(NodeType.IDENTIFIER, 0, tok.image);
+    }
+    | <INPUT>
+    {
+        return new Node(NodeType.INPUT);
+    }
+    | <LPAREN> node = Expression() <RPAREN>
+    {
+        return node;
+    }
+}
+*/
+

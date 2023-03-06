@@ -1,0 +1,3 @@
+javacc Parser.jj || exit 0
+javac *.java
+
