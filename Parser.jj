@@ -34,6 +34,16 @@ TOKEN : { < END : "}" > }
 
 TOKEN : { < IMPORT : "import" > }
 TOKEN : { < PACKAGE : "package" > }
+TOKEN : { < CLASS : "class" > }
+TOKEN : { < PUBLIC : "public" > }
+TOKEN : { < PRIVATE : "private" > }
+TOKEN : { < PROTECTED : "protected" > }
+TOKEN : { < ABSTRACT : "abstract" > }
+TOKEN : { < FINAL : "final" > }
+TOKEN : { < TRANSIENT : "transient" > }
+TOKEN : { < SYNCHRONIZED : "synchronized" > }
+TOKEN : { < VOLATILE : "volatile" > }
+TOKEN : { < STATIK : "static" > }
 TOKEN : { < IF : "if" > }
 TOKEN : { < ELSE : "else" > }
 TOKEN : { < WHILE : "while" > }
@@ -51,18 +61,18 @@ TOKEN :
 
 
 Node Program(): {
-    Node pkg, imports, types;
+    Node pkg, imports, toplevels;
 }
 {
     pkg = PackageLine()
     imports = ImportLines()
-    types = TypeDeclarations()
+    toplevels = TopLevelDeclarations()
     <EOF>
     {
         Node wholeFile = new Node(NodeType.Program);
         wholeFile.attach(pkg);
         wholeFile.attach(imports);
-        wholeFile.attach(types);
+        wholeFile.attach(toplevels);
         return wholeFile;
     }
 }
@@ -137,15 +147,78 @@ Node QualifiedNameRest(): {
 }
 
 
-Node TypeDeclarations(): {
-    Token done;
+Node TopLevelDeclarations(): {
+    Node next;
+    Node rest;
 }
 {
-    done = <ID>
+    next = TopLevelDeclaration()
+    rest = TopLevelDeclarations()
     {
-        return new Node(NodeType.Identifier, 0.0, done.image);
+        if (rest == null) {
+            return next;
+        } else {
+            Node tree = new Node(NodeType.TopLevel);
+            tree.attach(next);
+            tree.attach(rest);
+            return tree;
+        }
+    }
+|
+    {return null;}
+
+}
+
+// TODO also allow interfaces
+Node TopLevelDeclaration(): {
+    Token name;
+    String mods;
+}
+{
+    mods = Modifiers()
+    <CLASS>
+    name = <ID>
+    <BEGIN>
+    <END>
+    {
+        Node tree = new Node(NodeType.Class, 0.0, name.image);
+        tree.setModifiers(mods);
+        return tree;
     }
 }
+
+
+String Modifiers(): {
+    String mod, rest;
+}
+{
+    mod = Modifier()
+    rest = Modifiers()
+    {
+        if (rest.equals("")) {
+            return mod;
+        } else {
+            return mod + ";" + rest;
+        }
+    }
+|
+    {return "";}
+}
+
+String Modifier(): {
+}
+{
+    <PUBLIC> {return "public";}
+    | <PRIVATE> {return "private";}
+    | <PROTECTED> {return "protected";}
+    | <ABSTRACT> {return "abstract";}
+    | <FINAL> {return "final";}
+    | <TRANSIENT> {return "transient";}
+    | <SYNCHRONIZED> {return "synchronized";}
+    | <VOLATILE> {return "volatile";}
+    | <STATIK> {return "static";}
+}
+
 
 /*
 Node Statements(): {

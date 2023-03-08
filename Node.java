@@ -5,6 +5,7 @@ public class Node {
     private double value = 0.0;
     private String id = "";
     private ArrayList<Node> children = new ArrayList<>();
+    private String modifiers;
 
     public Node(NodeType type, double value, String id) {
         this.type = type;
@@ -32,6 +33,10 @@ public class Node {
 
     public String getID() {
         return id;
+    }
+   
+    public void setModifiers(String modifiers) {
+        this.modifiers = modifiers;
     }
     
     public int numChildren() {

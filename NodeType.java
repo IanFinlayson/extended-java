@@ -1,6 +1,7 @@
 public enum NodeType {
     Program,
     Package,
+    TopLevel,
     Identifier,
     QualifiedName,
     IntValue,
